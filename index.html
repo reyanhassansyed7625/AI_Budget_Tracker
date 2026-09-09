@@ -1,0 +1,2515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Budget Tracker</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+    <style>
+     
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap');
+
+    :root {
+        --black: #11110f;
+        --dark: #1a1916;
+        --cream: #f5f2eb;
+        --white: #fffdf9;
+        --gold: #b08d57;
+        --gold-light: #d5bd91;
+        --text: #20201d;
+        --muted: #77736b;
+        --border: rgba(25, 24, 20, 0.12);
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        --shadow-small: 0 8px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        margin: 0;
+        background: var(--cream);
+        color: var(--text);
+        font-family: 'Inter', Arial, sans-serif;
+        letter-spacing: -0.01em;
+    }
+
+    /* Subtle decorative shapes */
+
+    body::before {
+        content: "";
+        position: fixed;
+        width: 420px;
+        height: 420px;
+        border: 1px solid rgba(176, 141, 87, 0.16);
+        border-radius: 50%;
+        top: -210px;
+        right: -140px;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    body::after {
+        content: "";
+        position: fixed;
+        width: 300px;
+        height: 300px;
+        border: 1px solid rgba(176, 141, 87, 0.12);
+        border-radius: 50%;
+        bottom: -170px;
+        left: -130px;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    /* Header */
+
+    .header {
+        position: relative;
+        background: var(--black);
+        color: white;
+        padding: 55px 25px 60px;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    .header::before {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border: 1px solid rgba(213, 189, 145, 0.25);
+        border-radius: 50%;
+        top: -160px;
+        left: -80px;
+    }
+
+    .header::after {
+        content: "";
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        border: 1px solid rgba(213, 189, 145, 0.18);
+        transform: rotate(45deg);
+        right: -80px;
+        bottom: -90px;
+    }
+
+    .header h1 {
+        position: relative;
+        margin: 0;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: clamp(38px, 6vw, 64px);
+        font-weight: 500;
+        letter-spacing: -0.04em;
+        z-index: 1;
+    }
+
+    .header p {
+        position: relative;
+        margin: 12px 0 0;
+        color: var(--gold-light);
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        z-index: 1;
+    }
+
+    /* Main container */
+
+    .container {
+        width: min(92%, 1050px);
+        margin: 55px auto;
+    }
+
+    /* Cards */
+
+    .card {
+        position: relative;
+        background: rgba(255, 253, 249, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 2px;
+        padding: 34px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .card::before {
+        content: "";
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border: 1px solid rgba(176, 141, 87, 0.12);
+        border-radius: 50%;
+        right: -55px;
+        top: -55px;
+    }
+
+    .card h2 {
+        margin: 0 0 25px;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+    }
+
+    /* Upload section */
+
+    .upload-area {
+        text-align: center;
+        padding: 50px 34px;
+    }
+
+    #uploadButton {
+        background: var(--black);
+        color: white;
+        border: 1px solid var(--black);
+        padding: 14px 30px;
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        box-shadow: var(--shadow-small);
+    }
+
+    #uploadButton:hover {
+        background: var(--gold);
+        border-color: var(--gold);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(176, 141, 87, 0.2);
+    }
+
+    #fileInput {
+        display: none;
+    }
+
+    #status {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 13px;
+    }
+
+    #receiptImage {
+        display: none;
+        max-width: 100%;
+        max-height: 350px;
+        margin: 28px auto 0;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-small);
+    }
+
+    /* Prediction */
+
+    .prediction-box {
+        display: none;
+        margin-top: 25px;
+        padding: 25px;
+        background: var(--black);
+        color: white;
+        text-align: center;
+    }
+
+    .prediction {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 27px;
+        margin-bottom: 8px;
+    }
+
+    .confidence {
+        color: var(--gold-light);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    /* Inputs */
+
+    .input-group {
+        margin-top: 10px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    input[type="number"] {
+        width: 100%;
+        padding: 15px 16px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 0;
+        color: var(--text);
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input[type="number"]:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.1);
+    }
+
+    #addButton {
+        width: 100%;
+        margin-top: 18px;
+        padding: 15px;
+        background: var(--gold);
+        color: white;
+        border: 1px solid var(--gold);
+        border-radius: 0;
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+
+    #addButton:hover {
+        background: var(--black);
+        border-color: var(--black);
+    }
+
+    /* Summary */
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+
+    .summary-item {
+        background: var(--white);
+        border: 1px solid var(--border);
+        padding: 23px 15px;
+        text-align: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .summary-item:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-small);
+    }
+
+    .summary-item h3 {
+        margin: 0 0 12px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .summary-item p {
+        margin: 0;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 21px;
+        font-weight: 500;
+    }
+
+    /* Total */
+
+    .total {
+        position: relative;
+        margin-top: 15px;
+        padding: 28px;
+        background: var(--black);
+        color: white;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    .total::before {
+        content: "";
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        border: 1px solid rgba(213, 189, 145, 0.18);
+        border-radius: 50%;
+        left: -90px;
+        top: -90px;
+    }
+
+    .total div {
+        position: relative;
+        color: var(--gold-light);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+    }
+
+    .total p {
+        position: relative;
+        margin: 8px 0 0;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 38px;
+        font-weight: 500;
+    }
+
+    /* Errors */
+
+    .error {
+        color: #9b3333 !important;
+        font-weight: 600;
+    }
+
+    /* Mobile */
+
+    @media (max-width: 800px) {
+
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .container {
+            width: 94%;
+            margin: 30px auto;
+        }
+
+        .card {
+            padding: 25px;
+        }
+
+    }
+
+    @media (max-width: 500px) {
+
+        .header {
+            padding: 40px 20px 45px;
+        }
+
+        .header h1 {
+            font-size: 38px;
+        }
+
+        .summary-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .upload-area {
+            padding: 35px 20px;
+        }
+
+    }
+
+    /* Added feature styling — follows the existing design */
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .feature-item {
+        background: var(--white);
+        border: 1px solid var(--border);
+        padding: 20px;
+    }
+
+    .feature-item h3 {
+        margin: 0 0 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .feature-item p {
+        margin: 0;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 24px;
+    }
+
+    .budget-progress {
+        height: 12px;
+        background: rgba(25, 24, 20, 0.08);
+        margin-top: 20px;
+        overflow: hidden;
+    }
+
+    .budget-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--gold);
+        transition: width 0.3s ease;
+    }
+
+    .budget-message {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .advisor-box,
+    .answer-box {
+        background: var(--black);
+        color: white;
+        padding: 24px;
+        line-height: 1.6;
+    }
+
+    .advisor-box strong,
+    .answer-box strong {
+        color: var(--gold-light);
+    }
+
+    .question-row,
+    .budget-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+    }
+
+    .question-row input,
+    .budget-row input {
+        width: 100%;
+        padding: 15px 16px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 0;
+        color: var(--text);
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
+        outline: none;
+    }
+
+    .question-row input:focus,
+    .budget-row input:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.1);
+    }
+
+    .secondary-button {
+        padding: 15px 24px;
+        background: var(--black);
+        color: white;
+        border: 1px solid var(--black);
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
+    .secondary-button:hover {
+        background: var(--gold);
+        border-color: var(--gold);
+    }
+
+    .chart-row {
+        display: grid;
+        grid-template-columns: 120px 1fr 90px;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 13px;
+    }
+
+    .chart-label {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+
+    .chart-track {
+        height: 13px;
+        background: rgba(25, 24, 20, 0.08);
+        overflow: hidden;
+    }
+
+    .chart-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--gold);
+        transition: width 0.3s ease;
+    }
+
+    .chart-value {
+        text-align: right;
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 16px;
+    }
+
+    .pie-chart-layout {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 35px;
+        padding: 10px 0 5px;
+        flex-wrap: wrap;
+    }
+
+    .pie-chart-container {
+        width: 260px;
+        height: 260px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #spendingPieChart {
+        width: 260px;
+        height: 260px;
+        display: block;
+    }
+
+    .pie-legend {
+        min-width: 210px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .pie-legend-item {
+        display: grid;
+        grid-template-columns: 12px 1fr auto;
+        align-items: center;
+        gap: 9px;
+        font-size: 12px;
+    }
+
+    .pie-dot {
+        width: 10px;
+        height: 10px;
+        display: block;
+        border-radius: 50%;
+    }
+
+    .pie-food {
+        background: #b58a3c;
+    }
+
+    .pie-transport {
+        background: #6f8b8a;
+    }
+
+    .pie-shopping {
+        background: #8c6f5a;
+    }
+
+    .pie-entertainment {
+        background: #9b7a91;
+    }
+
+    .pie-category {
+        color: var(--muted);
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .pie-amount {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 15px;
+    }
+
+    .pie-total {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+    }
+
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .history-table th,
+    .history-table td {
+        padding: 13px 8px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        font-size: 12px;
+    }
+
+    .history-table th {
+        color: var(--muted);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .delete-button {
+        padding: 7px 10px;
+        background: transparent;
+        color: #9b3333;
+        border: 1px solid rgba(155, 51, 51, 0.3);
+        cursor: pointer;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .delete-button:hover {
+        background: #9b3333;
+        color: white;
+    }
+
+    .reset-button {
+        margin-top: 15px;
+        padding: 11px 18px;
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .reset-button:hover {
+        border-color: var(--gold);
+        color: var(--gold);
+    }
+
+    .alert-text {
+        color: #9b3333;
+        font-weight: 600;
+    }
+
+    @media (max-width: 800px) {
+        .feature-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .question-row,
+        .budget-row {
+            grid-template-columns: 1fr;
+        }
+
+        .chart-row {
+            grid-template-columns: 95px 1fr 75px;
+        }
+    }
+
+    @media (max-width: 500px) {
+        .feature-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .history-table {
+            min-width: 600px;
+        }
+
+        .history-scroll {
+            overflow-x: auto;
+        }
+    }
+
+</style>   
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>AI Budget Tracker</h1>
+        <p>AI-powered expense categorization</p>
+    </div>
+
+    <div class="container">
+
+        <div class="card upload-area">
+
+            <h2>Receipt Classification</h2>
+
+            <button id="uploadButton">
+                Upload Receipt
+            </button>
+
+            <input
+                type="file"
+                id="fileInput"
+                accept="image/*"
+            >
+
+            <p id="status">Loading AI model...</p>
+
+            <img id="receiptImage">
+
+            <div class="prediction-box" id="predictionBox">
+
+                <div class="prediction" id="prediction">
+                    Prediction: -
+                </div>
+
+                <div class="confidence" id="confidence">
+                    Confidence: -
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>Add Expense</h2>
+
+            <div class="input-group">
+
+                <label for="amount">
+                    Amount (AED)
+                </label>
+
+                <input
+                    type="number"
+                    id="amount"
+                    placeholder="Enter amount"
+                    min="0"
+                    step="0.01"
+                >
+
+            </div>
+
+            <button id="addButton">
+                Add Expense
+            </button>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>Spending Summary</h2>
+
+            <div class="summary-grid">
+
+                <div class="summary-item">
+                    <h3>Food</h3>
+                    <p>
+                        AED <span id="food">0.00</span>
+                    </p>
+                </div>
+
+                <div class="summary-item">
+                    <h3>Transport</h3>
+                    <p>
+                        AED <span id="transport">0.00</span>
+                    </p>
+                </div>
+
+                <div class="summary-item">
+                    <h3>Shopping</h3>
+                    <p>
+                        AED <span id="shopping">0.00</span>
+                    </p>
+                </div>
+
+                <div class="summary-item">
+                    <h3>Entertainment</h3>
+                    <p>
+                        AED <span id="entertainment">0.00</span>
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="total">
+
+                <div>Total Spending</div>
+
+                <p>
+                    AED <span id="total">0.00</span>
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- MONTHLY BUDGET -->
+        <div class="card">
+
+            <h2>Monthly Budget</h2>
+
+            <div class="budget-row">
+                <input
+                    type="number"
+                    id="budgetInput"
+                    placeholder="Enter monthly budget (AED)"
+                    min="0"
+                    step="0.01"
+                >
+
+                <button class="secondary-button" id="setBudgetButton">
+                    Set Budget
+                </button>
+            </div>
+
+            <div class="feature-grid" style="margin-top: 18px;">
+
+                <div class="feature-item">
+                    <h3>Monthly Budget</h3>
+                    <p>AED <span id="budgetAmount">0.00</span></p>
+                </div>
+
+                <div class="feature-item">
+                    <h3>Total Spent</h3>
+                    <p>AED <span id="budgetSpent">0.00</span></p>
+                </div>
+
+                <div class="feature-item">
+                    <h3>Remaining</h3>
+                    <p>AED <span id="budgetRemaining">0.00</span></p>
+                </div>
+
+                <div class="feature-item">
+                    <h3>Budget Used</h3>
+                    <p><span id="budgetPercent">0.0</span>%</p>
+                </div>
+
+            </div>
+
+            <div class="budget-progress">
+                <div class="budget-progress-bar" id="budgetProgress"></div>
+            </div>
+
+            <div class="budget-message" id="budgetMessage">
+                Set a monthly budget to start tracking your remaining balance.
+            </div>
+
+            <button class="reset-button" id="resetButton">
+                Reset Month
+            </button>
+
+        </div>
+
+
+        <!-- SPENDING BREAKDOWN -->
+        <div class="card">
+
+            <h2>Spending Breakdown</h2>
+
+            <div class="pie-chart-layout">
+
+                <div class="pie-chart-container">
+                    <canvas id="spendingPieChart" width="260" height="260"></canvas>
+                </div>
+
+                <div class="pie-legend" id="pieLegend">
+
+                    <div class="pie-legend-item">
+                        <span class="pie-dot pie-food"></span>
+                        <span class="pie-category">Food</span>
+                        <span class="pie-amount">AED <span id="foodChartValue">0.00</span></span>
+                    </div>
+
+                    <div class="pie-legend-item">
+                        <span class="pie-dot pie-transport"></span>
+                        <span class="pie-category">Transport</span>
+                        <span class="pie-amount">AED <span id="transportChartValue">0.00</span></span>
+                    </div>
+
+                    <div class="pie-legend-item">
+                        <span class="pie-dot pie-shopping"></span>
+                        <span class="pie-category">Shopping</span>
+                        <span class="pie-amount">AED <span id="shoppingChartValue">0.00</span></span>
+                    </div>
+
+                    <div class="pie-legend-item">
+                        <span class="pie-dot pie-entertainment"></span>
+                        <span class="pie-category">Entertainment</span>
+                        <span class="pie-amount">AED <span id="entertainmentChartValue">0.00</span></span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="pie-total">
+                Total spending: AED <span id="pieTotalValue">0.00</span>
+            </div>
+
+        </div>
+
+        <!-- AI BUDGET ADVISOR -->
+        <div class="card">
+
+            <h2>AI Budget Advisor</h2>
+
+            <div class="advisor-box" id="advisor">
+                Add some expenses and set a monthly budget to receive spending feedback.
+            </div>
+
+        </div>
+
+
+        <!-- ASK BUDGET AI -->
+        <div class="card">
+
+            <h2>Ask BudgetAI</h2>
+
+            <p style="color: var(--muted); font-size: 13px; margin-top: -10px;">
+                Ask basic questions about your current budget and spending.
+            </p>
+
+            <div class="question-row">
+
+                <input
+                    type="text"
+                    id="questionInput"
+                    placeholder="Example: How much did I spend on food?"
+                >
+
+                <button class="secondary-button" id="askButton">
+                    Ask
+                </button>
+
+            </div>
+
+            <div class="answer-box" id="answerBox" style="margin-top: 15px;">
+                Ask a question to get an answer based on your current data.
+            </div>
+
+        </div>
+
+
+        <!-- EXPENSE HISTORY -->
+        <div class="card">
+
+            <h2>Expense History</h2>
+
+            <div class="history-scroll">
+
+                <table class="history-table">
+
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>AI Confidence</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="5" style="color: var(--muted);">
+                                No expenses recorded yet.
+                            </td>
+                        </tr>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        const MODEL_URL = "./model/";
+
+        let model = null;
+        let predictedCategory = null;
+        let predictedConfidence = 0;
+
+        let totals = {
+            food: 0,
+            transport: 0,
+            shopping: 0,
+            entertainment: 0
+        };
+
+        let monthlyBudget = 0;
+        let expenseHistory = [];
+
+
+        /*
+            SAVE / LOAD DATA
+            Uses localStorage so data survives a page refresh.
+        */
+
+        function saveData() {
+
+            localStorage.setItem(
+                "aiBudgetTrackerData",
+                JSON.stringify({
+                    totals: totals,
+                    monthlyBudget: monthlyBudget,
+                    expenseHistory: expenseHistory
+                })
+            );
+
+        }
+
+
+        function loadSavedData() {
+
+            const saved =
+                localStorage.getItem("aiBudgetTrackerData");
+
+            if (!saved) {
+                return;
+            }
+
+            try {
+
+                const data = JSON.parse(saved);
+
+                if (data.totals) {
+                    totals = {
+                        food: Number(data.totals.food) || 0,
+                        transport: Number(data.totals.transport) || 0,
+                        shopping: Number(data.totals.shopping) || 0,
+                        entertainment: Number(data.totals.entertainment) || 0
+                    };
+                }
+
+                monthlyBudget =
+                    Number(data.monthlyBudget) || 0;
+
+                expenseHistory =
+                    Array.isArray(data.expenseHistory)
+                        ? data.expenseHistory
+                        : [];
+
+            } catch (error) {
+
+                console.error(
+                    "Could not load saved data:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /*
+            LOAD AI MODEL
+        */
+
+        async function loadModel() {
+
+            const status =
+                document.getElementById("status");
+
+            try {
+
+                status.innerText =
+                    "Loading AI model...";
+
+                model = await tmImage.load(
+                    MODEL_URL + "model.json",
+                    MODEL_URL + "metadata.json"
+                );
+
+                status.innerText =
+                    "AI model loaded successfully.";
+
+                status.classList.remove("error");
+
+            } catch (error) {
+
+                console.error(error);
+
+                status.innerText =
+                    "Error loading AI model. Check the model folder.";
+
+                status.classList.add("error");
+
+            }
+
+        }
+
+
+        /*
+            UPLOAD BUTTON
+        */
+
+        document.getElementById(
+            "uploadButton"
+        ).addEventListener(
+            "click",
+            function() {
+
+                document.getElementById(
+                    "fileInput"
+                ).click();
+
+            }
+        );
+
+
+        /*
+            IMAGE UPLOAD
+        */
+
+        document.getElementById(
+            "fileInput"
+        ).addEventListener(
+            "change",
+            function(event) {
+
+                const file =
+                    event.target.files[0];
+
+                if (!file) {
+                    return;
+                }
+
+                const image =
+                    document.getElementById(
+                        "receiptImage"
+                    );
+
+                image.src =
+                    URL.createObjectURL(file);
+
+                image.style.display =
+                    "block";
+
+                image.onload = function() {
+
+                    predictImage(image);
+
+                };
+
+            }
+        );
+
+
+        /*
+            AI PREDICTION
+        */
+
+        async function predictImage(image) {
+
+            if (!model) {
+
+                alert(
+                    "The AI model has not finished loading."
+                );
+
+                return;
+
+            }
+
+            try {
+
+                const predictions =
+                    await model.predict(image);
+
+                let bestPrediction =
+                    predictions[0];
+
+                for (
+                    let i = 1;
+                    i < predictions.length;
+                    i++
+                ) {
+
+                    if (
+                        predictions[i].probability >
+                        bestPrediction.probability
+                    ) {
+
+                        bestPrediction =
+                            predictions[i];
+
+                    }
+
+                }
+
+
+                predictedCategory =
+                    normalizeCategory(
+                        bestPrediction.className
+                    );
+
+
+                predictedConfidence =
+                    bestPrediction.probability;
+
+
+                const confidence =
+                    predictedConfidence * 100;
+
+
+                document.getElementById(
+                    "prediction"
+                ).innerText =
+                    "Prediction: " +
+                    predictedCategory;
+
+
+                document.getElementById(
+                    "confidence"
+                ).innerText =
+                    "Confidence: " +
+                    confidence.toFixed(1) +
+                    "%";
+
+
+                document.getElementById(
+                    "predictionBox"
+                ).style.display =
+                    "block";
+
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "There was an error analyzing the image."
+                );
+
+            }
+
+        }
+
+
+        /*
+            NORMALIZE CATEGORY
+            Makes the app robust to capitalization or
+            slightly different Teachable Machine labels.
+        */
+
+        function normalizeCategory(label) {
+
+            const category =
+                String(label || "")
+                .toLowerCase()
+                .trim();
+
+            if (category.includes("food")) {
+                return "Food";
+            }
+
+            if (category.includes("transport")) {
+                return "Transport";
+            }
+
+            if (category.includes("shop")) {
+                return "Shopping";
+            }
+
+            if (category.includes("entertain")) {
+                return "Entertainment";
+            }
+
+            return String(label || "").trim();
+
+        }
+
+
+        /*
+            ADD EXPENSE
+        */
+
+        document.getElementById(
+            "addButton"
+        ).addEventListener(
+            "click",
+            function() {
+
+                if (!predictedCategory) {
+
+                    alert(
+                        "Please upload a receipt first."
+                    );
+
+                    return;
+
+                }
+
+
+                const amount =
+                    parseFloat(
+                        document.getElementById(
+                            "amount"
+                        ).value
+                    );
+
+
+                if (
+                    isNaN(amount) ||
+                    amount <= 0
+                ) {
+
+                    alert(
+                        "Please enter a valid amount."
+                    );
+
+                    return;
+
+                }
+
+
+                const category =
+                    normalizeCategory(
+                        predictedCategory
+                    );
+
+
+                if (category === "Food") {
+
+                    totals.food += amount;
+
+                }
+
+                else if (
+                    category === "Transport"
+                ) {
+
+                    totals.transport += amount;
+
+                }
+
+                else if (
+                    category === "Shopping"
+                ) {
+
+                    totals.shopping += amount;
+
+                }
+
+                else if (
+                    category === "Entertainment"
+                ) {
+
+                    totals.entertainment += amount;
+
+                }
+
+                else {
+
+                    alert(
+                        "The AI predicted '" +
+                        predictedCategory +
+                        "', but this category is not supported."
+                    );
+
+                    return;
+
+                }
+
+
+                expenseHistory.push({
+                    date:
+                        new Date().toLocaleString(),
+                    category: category,
+                    amount: amount,
+                    confidence:
+                        predictedConfidence
+                });
+
+
+                saveData();
+                updateSummary();
+
+
+                document.getElementById(
+                    "amount"
+                ).value = "";
+
+
+                alert(
+                    "AED " +
+                    amount.toFixed(2) +
+                    " added to " +
+                    category +
+                    "."
+                );
+
+
+                predictedCategory = null;
+                predictedConfidence = 0;
+
+            }
+        );
+
+
+        /*
+            UPDATE ORIGINAL SUMMARY
+        */
+
+        function updateSummary() {
+
+            document.getElementById(
+                "food"
+            ).innerText =
+                totals.food.toFixed(2);
+
+
+            document.getElementById(
+                "transport"
+            ).innerText =
+                totals.transport.toFixed(2);
+
+
+            document.getElementById(
+                "shopping"
+            ).innerText =
+                totals.shopping.toFixed(2);
+
+
+            document.getElementById(
+                "entertainment"
+            ).innerText =
+                totals.entertainment.toFixed(2);
+
+
+            const total =
+                getTotalSpending();
+
+
+            document.getElementById(
+                "total"
+            ).innerText =
+                total.toFixed(2);
+
+
+            updateBudget();
+            updateChart();
+            updateAdvisor();
+            updateHistory();
+
+        }
+
+
+        /*
+            TOTAL SPENDING
+        */
+
+        function getTotalSpending() {
+
+            return (
+                totals.food +
+                totals.transport +
+                totals.shopping +
+                totals.entertainment
+            );
+
+        }
+
+
+        /*
+            MONTHLY BUDGET
+        */
+
+        document.getElementById(
+            "setBudgetButton"
+        ).addEventListener(
+            "click",
+            function() {
+
+                const budget =
+                    parseFloat(
+                        document.getElementById(
+                            "budgetInput"
+                        ).value
+                    );
+
+
+                if (
+                    isNaN(budget) ||
+                    budget <= 0
+                ) {
+
+                    alert(
+                        "Please enter a valid monthly budget."
+                    );
+
+                    return;
+
+                }
+
+
+                monthlyBudget = budget;
+
+                saveData();
+                updateBudget();
+                updateAdvisor();
+
+            }
+        );
+
+
+        function updateBudget() {
+
+            const total =
+                getTotalSpending();
+
+            const remaining =
+                monthlyBudget - total;
+
+            const percent =
+                monthlyBudget > 0
+                    ? (total / monthlyBudget) * 100
+                    : 0;
+
+
+            document.getElementById(
+                "budgetAmount"
+            ).innerText =
+                monthlyBudget.toFixed(2);
+
+
+            document.getElementById(
+                "budgetSpent"
+            ).innerText =
+                total.toFixed(2);
+
+
+            document.getElementById(
+                "budgetRemaining"
+            ).innerText =
+                remaining.toFixed(2);
+
+
+            document.getElementById(
+                "budgetPercent"
+            ).innerText =
+                percent.toFixed(1);
+
+
+            const progress =
+                document.getElementById(
+                    "budgetProgress"
+                );
+
+
+            progress.style.width =
+                Math.min(
+                    Math.max(percent, 0),
+                    100
+                ) + "%";
+
+
+            const message =
+                document.getElementById(
+                    "budgetMessage"
+                );
+
+
+            if (monthlyBudget <= 0) {
+
+                message.innerText =
+                    "Set a monthly budget to start tracking your remaining balance.";
+
+            }
+
+            else if (remaining < 0) {
+
+                message.innerHTML =
+                    '<span class="alert-text">' +
+                    "Budget exceeded by AED " +
+                    Math.abs(remaining).toFixed(2) +
+                    ".</span>";
+
+            }
+
+            else if (percent >= 90) {
+
+                message.innerHTML =
+                    '<span class="alert-text">' +
+                    "Warning: you have used more than 90% of your budget. " +
+                    "AED " +
+                    remaining.toFixed(2) +
+                    " remains." +
+                    "</span>";
+
+            }
+
+            else if (percent >= 75) {
+
+                message.innerText =
+                    "You have used " +
+                    percent.toFixed(1) +
+                    "% of your budget. AED " +
+                    remaining.toFixed(2) +
+                    " remains.";
+
+            }
+
+            else {
+
+                message.innerText =
+                    "You have used " +
+                    percent.toFixed(1) +
+                    "% of your budget. AED " +
+                    remaining.toFixed(2) +
+                    " remains.";
+
+            }
+
+        }
+
+
+        /*
+            SPENDING CHART
+        */
+
+        function updateChart() {
+
+            const total = getTotalSpending();
+
+            const categories = [
+                { name: "Food", amount: totals.food, color: "#b58a3c", value: "foodChartValue" },
+                { name: "Transport", amount: totals.transport, color: "#6f8b8a", value: "transportChartValue" },
+                { name: "Shopping", amount: totals.shopping, color: "#8c6f5a", value: "shoppingChartValue" },
+                { name: "Entertainment", amount: totals.entertainment, color: "#9b7a91", value: "entertainmentChartValue" }
+            ];
+
+            categories.forEach(function(category) {
+                document.getElementById(category.value).innerText =
+                    category.amount.toFixed(2);
+            });
+
+            const pieTotal = document.getElementById("pieTotalValue");
+            if (pieTotal) {
+                pieTotal.innerText = total.toFixed(2);
+            }
+
+            const canvas = document.getElementById("spendingPieChart");
+            if (!canvas) return;
+
+            const ctx = canvas.getContext("2d");
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 105;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (total <= 0) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(25, 24, 20, 0.08)";
+                ctx.fill();
+
+                ctx.fillStyle = "#77736b";
+                ctx.font = "13px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("No spending yet", centerX, centerY);
+                return;
+            }
+
+            let startAngle = -Math.PI / 2;
+
+            categories.forEach(function(category) {
+
+                if (category.amount <= 0) return;
+
+                const sliceAngle =
+                    (category.amount / total) * Math.PI * 2;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(
+                    centerX,
+                    centerY,
+                    radius,
+                    startAngle,
+                    startAngle + sliceAngle
+                );
+                ctx.closePath();
+
+                ctx.fillStyle = category.color;
+                ctx.fill();
+
+                startAngle += sliceAngle;
+            });
+
+            // Create a clean center so the chart has a modern donut appearance.
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 54, 0, Math.PI * 2);
+            ctx.fillStyle = "#f8f6f1";
+            ctx.fill();
+
+            ctx.fillStyle = "#191814";
+            ctx.font = "600 12px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("TOTAL", centerX, centerY - 9);
+
+            ctx.font = "16px Georgia";
+            ctx.fillText("AED " + total.toFixed(2), centerX, centerY + 12);
+
+        }
+
+
+        /*
+            AI BUDGET ADVISOR
+        */
+
+        function updateAdvisor() {
+
+            const advisor =
+                document.getElementById(
+                    "advisor"
+                );
+
+            const total =
+                getTotalSpending();
+
+
+            if (total <= 0) {
+
+                advisor.innerHTML =
+                    "Add some expenses and set a monthly budget to receive spending feedback.";
+
+                return;
+
+            }
+
+
+            const categories = [
+                ["Food", totals.food],
+                ["Transport", totals.transport],
+                ["Shopping", totals.shopping],
+                ["Entertainment", totals.entertainment]
+            ];
+
+
+            categories.sort(
+                function(a, b) {
+                    return b[1] - a[1];
+                }
+            );
+
+
+            const topCategory =
+                categories[0][0];
+
+            const topAmount =
+                categories[0][1];
+
+            const topPercent =
+                (topAmount / total) * 100;
+
+
+            let feedback = "";
+
+
+            if (monthlyBudget <= 0) {
+
+                feedback +=
+                    "<strong>Advisor:</strong> Set a monthly budget so I can evaluate whether your spending is within your limit. ";
+
+            }
+
+            else {
+
+                const budgetPercent =
+                    (total / monthlyBudget) * 100;
+
+
+                if (budgetPercent > 100) {
+
+                    feedback +=
+                        "<strong>Budget alert:</strong> You have exceeded your monthly budget. ";
+
+                }
+
+                else if (budgetPercent >= 90) {
+
+                    feedback +=
+                        "<strong>Budget alert:</strong> You have used more than 90% of your monthly budget. ";
+
+                }
+
+                else if (budgetPercent >= 75) {
+
+                    feedback +=
+                        "<strong>Budget alert:</strong> You have used more than 75% of your monthly budget. ";
+
+                }
+
+                else {
+
+                    feedback +=
+                        "<strong>Good progress:</strong> You are currently below 75% of your monthly budget. ";
+
+                }
+
+            }
+
+
+            feedback +=
+                "Your highest spending category is <strong>" +
+                topCategory +
+                "</strong>, making up " +
+                topPercent.toFixed(1) +
+                "% of your total spending. ";
+
+
+            if (
+                topCategory === "Shopping" &&
+                topPercent >= 30
+            ) {
+
+                feedback +=
+                    "Consider reducing non-essential shopping purchases.";
+
+            }
+
+            else if (
+                topCategory === "Entertainment" &&
+                topPercent >= 30
+            ) {
+
+                feedback +=
+                    "Consider setting a smaller entertainment limit.";
+
+            }
+
+            else if (
+                topCategory === "Food" &&
+                topPercent >= 40
+            ) {
+
+                feedback +=
+                    "Planning meals and reducing unnecessary food purchases could help.";
+
+            }
+
+            else if (
+                topCategory === "Transport" &&
+                topPercent >= 40
+            ) {
+
+                feedback +=
+                    "Look for practical ways to reduce transport costs.";
+
+            }
+
+            else {
+
+                feedback +=
+                    "Keep monitoring your largest category and review unnecessary expenses.";
+
+            }
+
+
+            advisor.innerHTML =
+                feedback;
+
+        }
+
+
+        /*
+            ASK BUDGET AI
+        */
+
+        document.getElementById(
+            "askButton"
+        ).addEventListener(
+            "click",
+            function() {
+
+                const question =
+                    document.getElementById(
+                        "questionInput"
+                    ).value;
+
+                document.getElementById(
+                    "answerBox"
+                ).innerHTML =
+                    answerQuestion(question);
+
+            }
+        );
+
+
+        document.getElementById(
+            "questionInput"
+        ).addEventListener(
+            "keydown",
+            function(event) {
+
+                if (event.key === "Enter") {
+
+                    document.getElementById(
+                        "askButton"
+                    ).click();
+
+                }
+
+            }
+        );
+
+
+        function answerQuestion(question) {
+
+            const q =
+                String(question || "")
+                .toLowerCase()
+                .trim();
+
+
+            const total =
+                getTotalSpending();
+
+            const remaining =
+                monthlyBudget - total;
+
+
+            if (!q) {
+
+                return "Please type a question first.";
+
+            }
+
+
+            if (
+                q.includes("how much") &&
+                (
+                    q.includes("spent") ||
+                    q.includes("spending")
+                ) &&
+                q.includes("food")
+            ) {
+
+                return (
+                    "You have spent <strong>AED " +
+                    totals.food.toFixed(2) +
+                    "</strong> on Food."
+                );
+
+            }
+
+
+            if (
+                q.includes("how much") &&
+                (
+                    q.includes("spent") ||
+                    q.includes("spending")
+                ) &&
+                q.includes("transport")
+            ) {
+
+                return (
+                    "You have spent <strong>AED " +
+                    totals.transport.toFixed(2) +
+                    "</strong> on Transport."
+                );
+
+            }
+
+
+            if (
+                q.includes("how much") &&
+                (
+                    q.includes("spent") ||
+                    q.includes("spending")
+                ) &&
+                q.includes("shopping")
+            ) {
+
+                return (
+                    "You have spent <strong>AED " +
+                    totals.shopping.toFixed(2) +
+                    "</strong> on Shopping."
+                );
+
+            }
+
+
+            if (
+                q.includes("how much") &&
+                (
+                    q.includes("spent") ||
+                    q.includes("spending")
+                ) &&
+                q.includes("entertainment")
+            ) {
+
+                return (
+                    "You have spent <strong>AED " +
+                    totals.entertainment.toFixed(2) +
+                    "</strong> on Entertainment."
+                );
+
+            }
+
+
+            if (
+                (
+                    q.includes("how much") &&
+                    (
+                        q.includes("spent") ||
+                        q.includes("spending")
+                    )
+                ) &&
+                !q.includes("food") &&
+                !q.includes("transport") &&
+                !q.includes("shopping") &&
+                !q.includes("entertainment")
+            ) {
+
+                return (
+                    "Your total spending is <strong>AED " +
+                    total.toFixed(2) +
+                    "</strong>."
+                );
+
+            }
+
+
+            if (
+                q.includes("left") ||
+                q.includes("remaining") ||
+                q.includes("have left")
+            ) {
+
+                if (monthlyBudget <= 0) {
+
+                    return "No monthly budget has been set yet.";
+
+                }
+
+
+                if (remaining < 0) {
+
+                    return (
+                        "You are <strong>AED " +
+                        Math.abs(remaining).toFixed(2) +
+                        "</strong> over your monthly budget."
+                    );
+
+                }
+
+
+                return (
+                    "You have <strong>AED " +
+                    remaining.toFixed(2) +
+                    "</strong> remaining from your monthly budget."
+                );
+
+            }
+
+
+            if (
+                q.includes("within") ||
+                q.includes("under budget") ||
+                q.includes("over budget")
+            ) {
+
+                if (monthlyBudget <= 0) {
+
+                    return "No monthly budget has been set yet.";
+
+                }
+
+
+                if (remaining >= 0) {
+
+                    return (
+                        "Yes. You are within your budget with <strong>AED " +
+                        remaining.toFixed(2) +
+                        "</strong> remaining."
+                    );
+
+                }
+
+
+                return (
+                    "No. You are over your budget by <strong>AED " +
+                    Math.abs(remaining).toFixed(2) +
+                    "</strong>."
+                );
+
+            }
+
+
+            if (
+                q.includes("most") ||
+                q.includes("highest") ||
+                q.includes("largest")
+            ) {
+
+                const categories = [
+                    ["Food", totals.food],
+                    ["Transport", totals.transport],
+                    ["Shopping", totals.shopping],
+                    ["Entertainment", totals.entertainment]
+                ];
+
+
+                categories.sort(
+                    function(a, b) {
+                        return b[1] - a[1];
+                    }
+                );
+
+
+                if (categories[0][1] <= 0) {
+
+                    return "No spending has been recorded yet.";
+
+                }
+
+
+                return (
+                    "<strong>" +
+                    categories[0][0] +
+                    "</strong> is your highest spending category at <strong>AED " +
+                    categories[0][1].toFixed(2) +
+                    "</strong>."
+                );
+
+            }
+
+
+            if (
+                q.includes("reduce") ||
+                q.includes("cut") ||
+                q.includes("improve") ||
+                q.includes("advice") ||
+                q.includes("recommend")
+            ) {
+
+                const categories = [
+                    ["Food", totals.food],
+                    ["Transport", totals.transport],
+                    ["Shopping", totals.shopping],
+                    ["Entertainment", totals.entertainment]
+                ];
+
+
+                categories.sort(
+                    function(a, b) {
+                        return b[1] - a[1];
+                    }
+                );
+
+
+                if (categories[0][1] <= 0) {
+
+                    return (
+                        "Add some expenses first so I can identify your biggest spending category."
+                    );
+
+                }
+
+
+                return (
+                    "Your biggest spending category is <strong>" +
+                    categories[0][0] +
+                    "</strong> at <strong>AED " +
+                    categories[0][1].toFixed(2) +
+                    "</strong>. Start by reviewing whether some expenses in this category can be reduced."
+                );
+
+            }
+
+
+            if (
+                q.includes("budget") &&
+                (
+                    q.includes("how much") ||
+                    q.includes("what is")
+                )
+            ) {
+
+                if (monthlyBudget <= 0) {
+
+                    return "No monthly budget has been set yet.";
+
+                }
+
+
+                return (
+                    "Your monthly budget is <strong>AED " +
+                    monthlyBudget.toFixed(2) +
+                    "</strong>."
+                );
+
+            }
+
+
+            return (
+                "I can answer questions such as: " +
+                "How much have I spent? " +
+                "How much did I spend on food? " +
+                "How much money do I have left? " +
+                "What category do I spend the most on? " +
+                "Am I within my budget? " +
+                "What should I reduce my spending on?"
+            );
+
+        }
+
+
+        /*
+            EXPENSE HISTORY
+        */
+
+        function updateHistory() {
+
+            const body =
+                document.getElementById(
+                    "historyBody"
+                );
+
+
+            if (
+                expenseHistory.length === 0
+            ) {
+
+                body.innerHTML =
+                    '<tr>' +
+                    '<td colspan="5" style="color: var(--muted);">' +
+                    "No expenses recorded yet." +
+                    "</td>" +
+                    "</tr>";
+
+                return;
+
+            }
+
+
+            body.innerHTML =
+                expenseHistory
+                .map(
+                    function(expense, index) {
+
+                        return (
+                            "<tr>" +
+
+                            "<td>" +
+                            escapeHTML(
+                                expense.date
+                            ) +
+                            "</td>" +
+
+                            "<td>" +
+                            escapeHTML(
+                                expense.category
+                            ) +
+                            "</td>" +
+
+                            "<td>AED " +
+                            Number(
+                                expense.amount
+                            ).toFixed(2) +
+                            "</td>" +
+
+                            "<td>" +
+                            (
+                                Number(
+                                    expense.confidence
+                                ) * 100
+                            ).toFixed(1) +
+                            "%</td>" +
+
+                            "<td>" +
+
+                            '<button class="delete-button" ' +
+                            'onclick="deleteExpense(' +
+                            index +
+                            ')">' +
+                            "Delete" +
+                            "</button>" +
+
+                            "</td>" +
+
+                            "</tr>"
+                        );
+
+                    }
+                )
+                .join("");
+
+        }
+
+
+        function escapeHTML(value) {
+
+            return String(value || "")
+                .replace(
+                    /&/g,
+                    "&amp;"
+                )
+                .replace(
+                    /</g,
+                    "&lt;"
+                )
+                .replace(
+                    />/g,
+                    "&gt;"
+                )
+                .replace(
+                    /"/g,
+                    "&quot;"
+                )
+                .replace(
+                    /'/g,
+                    "&#039;"
+                );
+
+        }
+
+
+        window.deleteExpense =
+            function(index) {
+
+                const expense =
+                    expenseHistory[index];
+
+                if (!expense) {
+                    return;
+                }
+
+
+                const confirmed =
+                    confirm(
+                        "Delete this expense?"
+                    );
+
+
+                if (!confirmed) {
+                    return;
+                }
+
+
+                const category =
+                    normalizeCategory(
+                        expense.category
+                    );
+
+                const amount =
+                    Number(expense.amount) || 0;
+
+
+                if (category === "Food") {
+                    totals.food =
+                        Math.max(
+                            0,
+                            totals.food - amount
+                        );
+                }
+
+                else if (
+                    category === "Transport"
+                ) {
+                    totals.transport =
+                        Math.max(
+                            0,
+                            totals.transport - amount
+                        );
+                }
+
+                else if (
+                    category === "Shopping"
+                ) {
+                    totals.shopping =
+                        Math.max(
+                            0,
+                            totals.shopping - amount
+                        );
+                }
+
+                else if (
+                    category === "Entertainment"
+                ) {
+                    totals.entertainment =
+                        Math.max(
+                            0,
+                            totals.entertainment - amount
+                        );
+                }
+
+
+                expenseHistory.splice(
+                    index,
+                    1
+                );
+
+
+                saveData();
+                updateSummary();
+
+            };
+
+
+        /*
+            RESET MONTH
+        */
+
+        document.getElementById(
+            "resetButton"
+        ).addEventListener(
+            "click",
+            function() {
+
+                const confirmed =
+                    confirm(
+                        "Reset the monthly budget and delete all recorded expenses?"
+                    );
+
+
+                if (!confirmed) {
+                    return;
+                }
+
+
+                totals = {
+                    food: 0,
+                    transport: 0,
+                    shopping: 0,
+                    entertainment: 0
+                };
+
+
+                monthlyBudget = 0;
+                expenseHistory = [];
+
+
+                saveData();
+                updateSummary();
+
+
+                document.getElementById(
+                    "budgetInput"
+                ).value = "";
+
+            }
+        );
+
+
+        /*
+            START APPLICATION
+        */
+
+        loadSavedData();
+        updateSummary();
+        loadModel();
+
+    </script>
+
+</body>
+</html>
