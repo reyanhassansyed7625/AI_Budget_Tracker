@@ -721,6 +721,24 @@
         }
     }
 
+
+    /* Conversational BudgetAI */
+    .chat-window { background: var(--white); border: 1px solid var(--border); height: 360px; overflow-y: auto; padding: 18px; display:flex; flex-direction:column; gap:12px; }
+    .chat-message { max-width:82%; padding:12px 15px; line-height:1.55; font-size:13px; }
+    .chat-message.bot { align-self:flex-start; background:var(--black); color:white; }
+    .chat-message.user { align-self:flex-end; background:var(--cream); border:1px solid var(--border); }
+    .chat-message strong { color:var(--gold-light); }
+    .chat-message.user strong { color:var(--text); }
+    .chat-time { display:block; margin-top:5px; font-size:10px; opacity:.55; }
+    .chat-suggestions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .chat-suggestion { padding:9px 12px; border:1px solid var(--border); background:transparent; cursor:pointer; font-size:11px; }
+    .chat-suggestion:hover { border-color:var(--gold); color:var(--gold); }
+    .chat-input-row { display:grid; grid-template-columns:1fr auto; gap:12px; margin-top:12px; }
+    .chat-input { width:100%; padding:15px 16px; background:transparent; border:1px solid var(--border); color:var(--text); font:16px Inter, sans-serif; outline:none; }
+    .chat-input:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(176,141,87,.1); }
+    .typing { opacity:.7; font-style:italic; }
+    @media (max-width:500px) { .chat-window{height:330px;} .chat-message{max-width:92%;} .chat-input-row{grid-template-columns:1fr;} }
+
 </style>   
 </head>
 
@@ -959,33 +977,23 @@
         </div>
 
 
-        <!-- ASK BUDGET AI -->
+        <!-- CONVERSATIONAL BUDGET AI -->
         <div class="card">
-
-            <h2>Ask BudgetAI</h2>
-
+            <h2>BudgetAI Assistant</h2>
             <p style="color: var(--muted); font-size: 13px; margin-top: -10px;">
-                Ask basic questions about your current budget and spending.
+                Have a conversation about your budget, spending and financial habits.
             </p>
-
-            <div class="question-row">
-
-                <input
-                    type="text"
-                    id="questionInput"
-                    placeholder="Example: How much did I spend on food?"
-                >
-
-                <button class="secondary-button" id="askButton">
-                    Ask
-                </button>
-
+            <div class="chat-window" id="chatWindow" aria-live="polite"></div>
+            <div class="chat-suggestions">
+                <button class="chat-suggestion" data-question="How much have I spent?">Total spending</button>
+                <button class="chat-suggestion" data-question="How much money do I have left?">Money left</button>
+                <button class="chat-suggestion" data-question="What am I spending the most on?">Top category</button>
+                <button class="chat-suggestion" data-question="Give me advice">Give me advice</button>
             </div>
-
-            <div class="answer-box" id="answerBox" style="margin-top: 15px;">
-                Ask a question to get an answer based on your current data.
+            <div class="chat-input-row">
+                <input class="chat-input" type="text" id="questionInput" placeholder="Talk to BudgetAI...">
+                <button class="secondary-button" id="askButton">Send</button>
             </div>
-
         </div>
 
 
@@ -1963,306 +1971,72 @@
 
 
         function answerQuestion(question) {
+            const q = String(question || "").toLowerCase().trim();
+            const total = getTotalSpending();
+            const remaining = monthlyBudget - total;
+            const categories = [["Food", totals.food], ["Transport", totals.transport], ["Shopping", totals.shopping], ["Entertainment", totals.entertainment]].sort((a,b) => b[1] - a[1]);
+            if (!q) return "Type something and I'll help you with your budget.";
 
-            const q =
-                String(question || "")
-                .toLowerCase()
-                .trim();
-
-
-            const total =
-                getTotalSpending();
-
-            const remaining =
-                monthlyBudget - total;
-
-
-            if (!q) {
-
-                return "Please type a question first.";
-
+            const category = q.includes("food") || q.includes("restaurant") ? "Food" : q.includes("transport") || q.includes("taxi") || q.includes("metro") || q.includes("bus") ? "Transport" : q.includes("shopping") || q.includes("shop") || q.includes("clothes") ? "Shopping" : q.includes("entertainment") || q.includes("movie") || q.includes("game") ? "Entertainment" : null;
+            if (category && (q.includes("how much") || q.includes("spent") || q.includes("spending") || q.includes("cost"))) {
+                conversationContext = {type:"category", category:category};
+                return "You've spent <strong>AED " + totals[category.toLowerCase()].toFixed(2) + "</strong> on " + category + ". If you want, I can also tell you what percentage of your total spending that is.";
             }
-
-
-            if (
-                q.includes("how much") &&
-                (
-                    q.includes("spent") ||
-                    q.includes("spending")
-                ) &&
-                q.includes("food")
-            ) {
-
-                return (
-                    "You have spent <strong>AED " +
-                    totals.food.toFixed(2) +
-                    "</strong> on Food."
-                );
-
+            if ((q.includes("that") || q.includes("this") || q.includes("it") || q.includes("more")) && conversationContext && conversationContext.type === "category") {
+                const cat=conversationContext.category, amount=totals[cat.toLowerCase()], pct=total>0?(amount/total)*100:0;
+                return cat + " makes up <strong>" + pct.toFixed(1) + "%</strong> of your total spending. " + (pct>=40 ? "That's a significant share, so it's worth reviewing." : "It's not your largest concern right now.");
             }
-
-
-            if (
-                q.includes("how much") &&
-                (
-                    q.includes("spent") ||
-                    q.includes("spending")
-                ) &&
-                q.includes("transport")
-            ) {
-
-                return (
-                    "You have spent <strong>AED " +
-                    totals.transport.toFixed(2) +
-                    "</strong> on Transport."
-                );
-
+            if (/^(hi|hello|hey|yo|good morning|good afternoon|good evening)\b/.test(q)) { conversationContext={type:"greeting"}; return "Hey! 👋 I'm BudgetAI. I can look at the numbers in your tracker and help you understand your spending. What's on your mind?"; }
+            if (q.includes("thank") || q === "thanks" || q === "thx") return "You're welcome! Keep the expenses coming and I'll help you make sense of them.";
+            if (q.includes("who are you") || q.includes("what can you do") || q === "help") return "I'm your BudgetAI assistant. I can tell you your total spending, category spending, remaining budget, highest category, budget status, and give suggestions based on your recorded data. You can talk naturally rather than using exact questions.";
+            if (q.includes("how much") && (q.includes("spent") || q.includes("spending")) && !category) { conversationContext={type:"total"}; return "You've spent <strong>AED " + total.toFixed(2) + "</strong> in total across Food, Transport, Shopping and Entertainment."; }
+            if (q.includes("left") || q.includes("remaining") || q.includes("how much money") || q.includes("balance")) {
+                if(monthlyBudget<=0) return "You haven't set a monthly budget yet. Set one above and I'll keep track of how much you have left.";
+                conversationContext={type:"remaining"};
+                if(remaining<0) return "You're currently <strong>AED " + Math.abs(remaining).toFixed(2) + " over</strong> your monthly budget. We should look at your biggest category next.";
+                return "You have <strong>AED " + remaining.toFixed(2) + "</strong> left from your monthly budget. You've used " + ((total/monthlyBudget)*100).toFixed(1) + "% of it.";
             }
-
-
-            if (
-                q.includes("how much") &&
-                (
-                    q.includes("spent") ||
-                    q.includes("spending")
-                ) &&
-                q.includes("shopping")
-            ) {
-
-                return (
-                    "You have spent <strong>AED " +
-                    totals.shopping.toFixed(2) +
-                    "</strong> on Shopping."
-                );
-
+            if (q.includes("budget") && (q.includes("within") || q.includes("under") || q.includes("over") || q.includes("status") || q.includes("okay") || q.includes("ok"))) {
+                if(monthlyBudget<=0) return "You haven't set a monthly budget yet. Once you set one, I can judge whether you're within it.";
+                conversationContext={type:"budget"};
+                return remaining>=0 ? "Yes, you're within budget. You have <strong>AED " + remaining.toFixed(2) + "</strong> remaining." : "Not quite. You're <strong>AED " + Math.abs(remaining).toFixed(2) + " over</strong> your budget right now.";
             }
-
-
-            if (
-                q.includes("how much") &&
-                (
-                    q.includes("spent") ||
-                    q.includes("spending")
-                ) &&
-                q.includes("entertainment")
-            ) {
-
-                return (
-                    "You have spent <strong>AED " +
-                    totals.entertainment.toFixed(2) +
-                    "</strong> on Entertainment."
-                );
-
+            if (q.includes("most") || q.includes("highest") || q.includes("largest") || q.includes("biggest")) {
+                if(categories[0][1]<=0) return "I don't have any expenses to compare yet. Add a few expenses first.";
+                conversationContext={type:"top",category:categories[0][0]};
+                const pct=total>0?(categories[0][1]/total)*100:0;
+                return "Your biggest category is <strong>" + categories[0][0] + "</strong> at <strong>AED " + categories[0][1].toFixed(2) + "</strong>, which is " + pct.toFixed(1) + "% of your total spending.";
             }
-
-
-            if (
-                (
-                    q.includes("how much") &&
-                    (
-                        q.includes("spent") ||
-                        q.includes("spending")
-                    )
-                ) &&
-                !q.includes("food") &&
-                !q.includes("transport") &&
-                !q.includes("shopping") &&
-                !q.includes("entertainment")
-            ) {
-
-                return (
-                    "Your total spending is <strong>AED " +
-                    total.toFixed(2) +
-                    "</strong>."
-                );
-
+            if (q.includes("reduce") || q.includes("cut") || q.includes("save") || q.includes("advice") || q.includes("recommend") || q.includes("improve") || q.includes("better")) {
+                if(categories[0][1]<=0) return "Add a few expenses first. Then I can identify your biggest spending area and suggest where to focus.";
+                const top=categories[0][0], tips={Food:"Try planning purchases before ordering or shopping for food. Small repeated purchases can add up quickly.",Transport:"Compare transport options and group trips when practical.",Shopping:"Separate things you need from things you simply want, and wait before non-essential purchases.",Entertainment:"Set a personal entertainment limit so you still have room for essentials and savings."};
+                conversationContext={type:"advice",category:top};
+                return "I'd start with <strong>" + top + "</strong>, because it's your largest category at <strong>AED " + categories[0][1].toFixed(2) + "</strong>. " + tips[top];
             }
-
-
-            if (
-                q.includes("left") ||
-                q.includes("remaining") ||
-                q.includes("have left")
-            ) {
-
-                if (monthlyBudget <= 0) {
-
-                    return "No monthly budget has been set yet.";
-
-                }
-
-
-                if (remaining < 0) {
-
-                    return (
-                        "You are <strong>AED " +
-                        Math.abs(remaining).toFixed(2) +
-                        "</strong> over your monthly budget."
-                    );
-
-                }
-
-
-                return (
-                    "You have <strong>AED " +
-                    remaining.toFixed(2) +
-                    "</strong> remaining from your monthly budget."
-                );
-
+            if (conversationContext && (q === "yes" || q === "yeah" || q === "yep" || q.includes("tell me") || q.includes("go ahead"))) {
+                if(conversationContext.type==="category"){const cat=conversationContext.category,amount=totals[cat.toLowerCase()],pct=total>0?(amount/total)*100:0;return cat+" is <strong>AED "+amount.toFixed(2)+"</strong>, or <strong>"+pct.toFixed(1)+"%</strong> of your total spending.";}
+                if(conversationContext.type==="top") return "Your top category is still <strong>"+conversationContext.category+"</strong>. Ask me how to reduce it and I'll give you practical ideas.";
+                if(conversationContext.type==="advice") return "The main area I'd focus on is <strong>"+conversationContext.category+"</strong>. Ask me how much you're spending there or what percentage it represents.";
             }
-
-
-            if (
-                q.includes("within") ||
-                q.includes("under budget") ||
-                q.includes("over budget")
-            ) {
-
-                if (monthlyBudget <= 0) {
-
-                    return "No monthly budget has been set yet.";
-
-                }
-
-
-                if (remaining >= 0) {
-
-                    return (
-                        "Yes. You are within your budget with <strong>AED " +
-                        remaining.toFixed(2) +
-                        "</strong> remaining."
-                    );
-
-                }
-
-
-                return (
-                    "No. You are over your budget by <strong>AED " +
-                    Math.abs(remaining).toFixed(2) +
-                    "</strong>."
-                );
-
+            if (q.includes("good") || q.includes("doing well") || q.includes("am i okay") || q.includes("how am i doing")) {
+                if(monthlyBudget<=0) return "I can judge that better once you set a monthly budget. Right now I can still show you which category is taking the most money.";
+                const pct=(total/monthlyBudget)*100;
+                if(pct>100) return "You're currently over budget by <strong>AED "+Math.abs(remaining).toFixed(2)+"</strong>. Let's identify the biggest category and work from there.";
+                if(pct>=90) return "You're close to your limit, with only <strong>AED "+remaining.toFixed(2)+"</strong> left. I'd be careful with non-essential spending.";
+                if(pct>=75) return "You're at "+pct.toFixed(1)+"% of your budget. You're still within it, but it's worth watching your remaining spending.";
+                return "You're at "+pct.toFixed(1)+"% of your budget, so you're currently in a comfortable position.";
             }
-
-
-            if (
-                q.includes("most") ||
-                q.includes("highest") ||
-                q.includes("largest")
-            ) {
-
-                const categories = [
-                    ["Food", totals.food],
-                    ["Transport", totals.transport],
-                    ["Shopping", totals.shopping],
-                    ["Entertainment", totals.entertainment]
-                ];
-
-
-                categories.sort(
-                    function(a, b) {
-                        return b[1] - a[1];
-                    }
-                );
-
-
-                if (categories[0][1] <= 0) {
-
-                    return "No spending has been recorded yet.";
-
-                }
-
-
-                return (
-                    "<strong>" +
-                    categories[0][0] +
-                    "</strong> is your highest spending category at <strong>AED " +
-                    categories[0][1].toFixed(2) +
-                    "</strong>."
-                );
-
-            }
-
-
-            if (
-                q.includes("reduce") ||
-                q.includes("cut") ||
-                q.includes("improve") ||
-                q.includes("advice") ||
-                q.includes("recommend")
-            ) {
-
-                const categories = [
-                    ["Food", totals.food],
-                    ["Transport", totals.transport],
-                    ["Shopping", totals.shopping],
-                    ["Entertainment", totals.entertainment]
-                ];
-
-
-                categories.sort(
-                    function(a, b) {
-                        return b[1] - a[1];
-                    }
-                );
-
-
-                if (categories[0][1] <= 0) {
-
-                    return (
-                        "Add some expenses first so I can identify your biggest spending category."
-                    );
-
-                }
-
-
-                return (
-                    "Your biggest spending category is <strong>" +
-                    categories[0][0] +
-                    "</strong> at <strong>AED " +
-                    categories[0][1].toFixed(2) +
-                    "</strong>. Start by reviewing whether some expenses in this category can be reduced."
-                );
-
-            }
-
-
-            if (
-                q.includes("budget") &&
-                (
-                    q.includes("how much") ||
-                    q.includes("what is")
-                )
-            ) {
-
-                if (monthlyBudget <= 0) {
-
-                    return "No monthly budget has been set yet.";
-
-                }
-
-
-                return (
-                    "Your monthly budget is <strong>AED " +
-                    monthlyBudget.toFixed(2) +
-                    "</strong>."
-                );
-
-            }
-
-
-            return (
-                "I can answer questions such as: " +
-                "How much have I spent? " +
-                "How much did I spend on food? " +
-                "How much money do I have left? " +
-                "What category do I spend the most on? " +
-                "Am I within my budget? " +
-                "What should I reduce my spending on?"
-            );
-
+            return "I understand you're asking about your budget, but I need a little more detail. Try saying <strong>\"I spent too much on food\"</strong>, <strong>\"what do I have left?\"</strong>, or <strong>\"help me save money\"</strong>.";
         }
 
+        let conversationContext = null;
+        let lastUserMessage = "";
+        function addChatMessage(text,sender){const w=document.getElementById("chatWindow"),b=document.createElement("div");b.className="chat-message "+sender;b.innerHTML=text+'<span class="chat-time">'+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+"</span>";w.appendChild(b);w.scrollTop=w.scrollHeight;}
+        function sendBudgetMessage(customQuestion){const input=document.getElementById("questionInput"),question=typeof customQuestion==="string"?customQuestion:input.value.trim();if(!question)return;addChatMessage(escapeHTML(question),"user");input.value="";const t=document.createElement("div");t.className="chat-message bot typing";t.id="typingIndicator";t.innerText="BudgetAI is thinking...";document.getElementById("chatWindow").appendChild(t);setTimeout(function(){const i=document.getElementById("typingIndicator");if(i)i.remove();addChatMessage(answerQuestion(question),"bot");},350);lastUserMessage=question;}
+        document.getElementById("askButton").addEventListener("click",function(){sendBudgetMessage();});
+        document.getElementById("questionInput").addEventListener("keydown",function(e){if(e.key==="Enter")sendBudgetMessage();});
+        document.querySelectorAll(".chat-suggestion").forEach(function(b){b.addEventListener("click",function(){sendBudgetMessage(b.getAttribute("data-question"));});});
+        addChatMessage("Hey! 👋 I'm <strong>BudgetAI</strong>. I can talk with you about the spending data in your tracker. Ask me anything about your budget, or just tell me what's worrying you.","bot");
 
         /*
             EXPENSE HISTORY
