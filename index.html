@@ -741,6 +741,115 @@
     .typing { opacity:.7; font-style:italic; }
     @media (max-width:500px) { .chat-window{height:330px;} .chat-message{max-width:92%;} .chat-input-row{grid-template-columns:1fr;} }
 
+
+
+    /* iOS-style rounded UI — colors intentionally unchanged */
+    body {
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .card {
+        border-radius: 24px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.07);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 42px rgba(0, 0, 0, 0.09);
+    }
+
+    #uploadButton,
+    #addButton,
+    .secondary-button,
+    .reset-button,
+    .delete-button,
+    .chat-suggestion {
+        border-radius: 14px;
+    }
+
+    input[type="number"],
+    .question-row input,
+    .budget-row input,
+    .chat-input {
+        border-radius: 14px;
+        background: rgba(255, 253, 249, 0.55);
+    }
+
+    .prediction-box,
+    .advisor-box,
+    .answer-box,
+    .chat-window,
+    .total {
+        border-radius: 20px;
+    }
+
+    .summary-item,
+    .feature-item {
+        border-radius: 18px;
+    }
+
+    .budget-progress,
+    .chart-track {
+        border-radius: 999px;
+    }
+
+    .budget-progress-bar,
+    .chart-fill {
+        border-radius: 999px;
+    }
+
+    #receiptImage {
+        border-radius: 18px;
+    }
+
+    .chat-message {
+        border-radius: 18px;
+    }
+
+    .chat-message.bot {
+        border-bottom-left-radius: 6px;
+    }
+
+    .chat-message.user {
+        border-bottom-right-radius: 6px;
+    }
+
+    .chat-suggestion {
+        transition: all 0.2s ease;
+    }
+
+    .secondary-button,
+    #uploadButton,
+    #addButton,
+    .reset-button,
+    .delete-button,
+    .chat-suggestion {
+        transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    #uploadButton:active,
+    #addButton:active,
+    .secondary-button:active,
+    .reset-button:active,
+    .delete-button:active,
+    .chat-suggestion:active {
+        transform: scale(0.98);
+    }
+
+    @media (max-width: 500px) {
+        .card {
+            border-radius: 20px;
+            padding: 22px;
+        }
+
+        .summary-item,
+        .feature-item {
+            border-radius: 16px;
+        }
+    }
 </style>   
 </head>
 
